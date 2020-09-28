@@ -29,25 +29,42 @@ Breaking this down to individual research questions would amount to something li
      
      
 ```
-#get hctn projects
-cut -d, -f3 woc-commits-authors.csv | lsort 1G -u > /tmp/ps
+#get hackathon projects
+cut -d, -f3 woc-commits-authors.csv | lsort 1G -u > /data/ps
+
 # pmap p to P
-cat /tmp/ps | ~/lookup/getValues p2P | cut -d\; -f2 | lsort 1G -u > /tmp/Ps
+cat /data/ps | ~/lookup/getValues p2P | cut -d\; -f2 | lsort 1G -u > /data/Ps
+
 # get commits
-cat /tmp/Ps | ~/lookup/getValues -f P2c | cut -d\; -f2 | lsort 10G -u > /tmp/Cs
+cat /data/Ps | ~/lookup/getValues -f P2c | cut -d\; -f2 | lsort 10G -u > /data/Cs
+
 # get blobs
-cat /tmp/Cs | ~/lookup/getValues -f c2b | cut -d\; -f2 | lsort 10G -u > /tmp/Bs
+cat /data/Cs | ~/lookup/getValues -f c2b | cut -d\; -f2 | lsort 10G -u > /tmp/Bs
+# total number of blobs created by these commits:
+wc /data/Bs
+  5080658 
 
 # get the first commit for each blob 
 cat /data/Bs | ~/lookup/getValues b2a | gzip > /data/B2as
 
-# order all commits by time
+# order these commits by time (some are from others not from hackathon)
 zcat /data/B2as | cut -d\; -f4 | lsort 1G -u > /data/CsBO
+
 # select only commits from the hackathon projects
 join /data/Cs /data/CsBO | gzip > /data/CsBO.j
-# These are the blobs created by these commits
-zcat /data/B2as0 | ~/bin/grepField.perl /data/CsBO.j 4 | cut -d\; -f1 | wc -l
 
+# Now these are all the blobs created by these commits
+zcat /data/B2as | ~/bin/grepField.perl /data/CsBO.j 4 | cut -d\; -f1 | gzip > /data/BOs
+# the blobs that came from somwhere else are:  
+cat /data/Bs | lsort 10G | join -v1 - <(zcat /data/BOs) | gzip > BNs
+```
+Out of 5080658 blobs in hackathon repos only 2944578 have originated there: the rest (2136080) 
+were created somwhere else:
+```
+zcat /data/BOs | wc -l
+2944578
+zcat /data/BNs | wc -l
+2136080
 ```
 
 
