@@ -92,33 +92,32 @@ zcat c2BNta.s | lsort 20G -t\; -k1 | join -t\; - <(zcat c2BNta2P.s| lsort 10G -t
 zcat c2BNtaP.s|cut -d\; -f4 | lsort 1G -u | wc -l
 1619565
 
-# try get rid of the widely used blobs (probably
-# templates/licenses/trivial files) first
-# sort by blob
+# lets try to get rid of the widely used blobs (probably templates/licenses/trivial files) 
+# first sort by blob to make it easy to count commits for each blob
 zcat c2BNta.s | lsort 5G -t\; -k2 | gzip > c2BNta.sb
 
-# count blobs
+# count blobs for each commit
 zcat c2BNta.sb | cut -d\; -f2 | uniq -c > c2BNta.sb.c
-# select blobs with under 100 commits (unusal ones)
+# select blobs that have under 100 commits (unusal ones)
 awk '{ if($1<100) print $2}' c2BNta.sb.c | gzip > unusualBlobs
-#filter to include only unusualBlobs
+# filter to include only unusualBlobs
 zcat c2BNta.s | ~/lookup/grepField.perl unusualBlobs 2 | gzip > c2BNta.s1
 # join to creat commit, blob, time, author, project
 zcat c2BNta.s1 | lsort 20G -t\; -k1 | join -t\; - <(zcat c2BNta2P.s| lsort 10G -t\; -k1,2) | gzip > c2BNtaP.s1 
-# Count projects
+# Count projects for unusual blobs only
 zcat c2BNtaP.s1|cut -d\; -f4 | lsort 1G -u | wc -l
 178308
 ```
 If we exclude common blobs (probably templates/licenses/trivial
 files), the number of projects where hackathons sourced their code
-is 178308. If we include common blobs, it is even larger:
+is 178308. If we include common blobs, it is almost ten times larger:1619565
 
 For comparison, the number of projects using hackathon-originated
 files is 374140.
 
-In summary, hackathon repositories reuse files from existing
+In summary, hackathon repositories extensively reuse files from existing
 repositories and the files created in the hackathon are also used
-later in other repositories. 
+commonly used later in other repositories. 
 
 ## Current status (reverse chronological):
 
