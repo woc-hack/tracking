@@ -67,6 +67,17 @@ zcat /data/BNs | wc -l
 2136080
 ```
 
+Now identify projects and commits that used the blobs originated during hackathons
+somwhere else (and after the hackathons)
+```
+# find projects for all the commits for the blobs originated during hackathons 
+zcat c2BOta.s| cut -d\; -f1 | uniq | ~/lookup/getValues -f c2P | gzip > c2BOta2P.s
+# exclude hackathon projects
+zcat c2BOta2P.s | ~/bin/grepFieldv.perl Ps.gz 2 | gzip > c2BOta2Pnew.s
+#finally commits, times, and projects that used blobs originated during hackathons
+zcat c2BOta.s | lsort 20G -t\; -k1 | join -t\; - <(zcat c2BOta2Pnew.s| lsort 10G -t\; -k1,2) | gzip > c2BOtaP.s
+```
+
 
 ## Current status (reverse chronological):
 
