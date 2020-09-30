@@ -1,0 +1,91 @@
+#PBS -N WHAT
+#PBS -A ACF-UTK0011
+#PBS -l feature=MACHINE
+#PBS -l partition=MACHINE
+#PBS -l nodes=1:ppn=1,walltime=23:50:00
+#PBS -j oe
+#PBS -S /bin/bash
+LD_LIBRARY_PATH=$HOME/lib:$HOME/lib64:$LD_LIBRARY_PATH
+c=/lustre/haven/user/audris/c2fb
+cd $c
+
+machine=MACHINE
+maxM=7000
+[[ $machine == monster ]] && maxM=30000
+[[ $machine == rho ]] && maxM=900
+[[ $machine == sigma ]] && maxM=2900
+module load python3/3.6.5
+ver=R
+
+#for i in {0..7}; do 
+i=FROM
+LA=LANG
+
+if test 'a' = 'b'; then
+
+for k in {0..7}
+do j=$((FROM*8+k))
+  zcat b2callFullR$j.s | join -t\; - <(zcat WHATs$j.gz) | gzip > WHAT2Cs.$j
+done 
+
+fi
+if test 'a' = 'b'; then
+
+for k in {0..15}
+do j=$((FROM*16+k))
+   zcat WHAT2Cs.$j | awk -F\; '{print $2";"$1}' 
+done | perl -I $HOME/lib/perl5 -I $HOME/lookup  $HOME/lookup/splitSec.perl c2WHAT.FROM. 128
+
+fi
+if test 'a' = 'b'; then
+
+for j in {0..127}
+do zcat c2WHAT.FROM.$j.gz | lsort ${maxM}M -t\; -k1,2 -u | gzip > c2WHAT.FROM.$j.s
+   echo c2WHAT.FROM.$j.s
+done
+
+fi
+if test 'a' = 'b'; then
+
+for i in {0..7}
+do j=$((FROM*8+i))
+ str="lsort ${maxM}M -t\; -k1,2 --merge"
+ for k in {0..7}
+ do str="$str <(zcat c2WHAT.$k.$j.s)"
+ done
+ eval $str | gzip > c2WHAT$j.s
+done
+
+#for j in {0..127}
+#fi
+#if test 'a' = 'b'; then
+
+for k in {0..7}
+do j=$((FROM*8+k))
+   zcat c2WHAT$j.s | join -t\; - <(zcat c2taFullR$j.s) | gzip > c2WHATta$j.s
+done
+
+#need to find commits prior to ones in 
+#for i in {0..127}; do zcat CsBO.$i.gz | join -v2 -t\; - <(zcat c2BOta$i.s); done | gzip > c2BOta.s
+
+fi
+if test 'a' = 'b'; then
+
+for i in {0..3}
+do j=$((FROM*4+i))
+   zcat c2WHATta$j.s | lsort ${maxM}M -t\; -k3  | gzip > c2WHATta$j.st
+done
+
+fi
+if test 'a' = 'a'; then
+
+for i in {0..3}
+do j=$((FROM*4+i))
+   zcat c2WHATta$j.st | ~/lookup/grepField.perl -n Cs.$j.gz 1 | head -1 > c2WHATta$j.st0
+   zcat c2WHATta$j.st | head -$(cut -d: -f1 c2WHATta$j.st0) | gzip > c2WHATta$j.from
+done
+
+#zcat c2BNta*.from| lsort 5G -t\; -k1,2 | gzip > c2BNta.s
+
+fi
+
