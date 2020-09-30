@@ -29,41 +29,42 @@ Breaking this down to individual research questions would amount to something li
      
      
 ```
+cd /data/play/trackhacks
 #get hackathon projects
-cut -d, -f3 woc-commits-authors.csv | lsort 1G -u > /data/ps
+cut -d, -f3 woc-commits-authors.csv | lsort 1G -u > ps
 
 # pmap p to P
-cat /data/ps | ~/lookup/getValues p2P | cut -d\; -f2 | lsort 1G -u > /data/Ps
+cat ps | ~/lookup/getValues p2P | cut -d\; -f2 | lsort 1G -u > Ps
 
 # get commits
-cat /data/Ps | ~/lookup/getValues -f P2c | cut -d\; -f2 | lsort 10G -u > /data/Cs
+cat Ps | ~/lookup/getValues -f P2c | cut -d\; -f2 | lsort 10G -u > Cs
 
 # get blobs
-cat /data/Cs | ~/lookup/getValues -f c2b | cut -d\; -f2 | lsort 10G -u > /tmp/Bs
+cat Cs | ~/lookup/getValues -f c2b | cut -d\; -f2 | lsort 10G -u > Bs
 # total number of blobs created by these commits:
-wc /data/Bs
+wc Bs
   5080658 
 
 # get the first commit for each blob 
-cat /data/Bs | ~/lookup/getValues b2a | gzip > /data/B2as
+cat Bs | ~/lookup/getValues b2a | gzip > B2as
 
 # order these commits by time (some are from others not from hackathon)
-zcat /data/B2as | cut -d\; -f4 | lsort 1G -u > /data/CsBO
+zcat B2as | cut -d\; -f4 | lsort 1G -u > CsBO
 
 # select only commits from the hackathon projects
-join /data/Cs /data/CsBO | gzip > /data/CsBO.j
+join Cs CsBO | gzip > CsBO.j
 
 # Now these are all the blobs created by these commits
-zcat /data/B2as | ~/bin/grepField.perl /data/CsBO.j 4 | cut -d\; -f1 | gzip > /data/BOs
+zcat B2as | ~/bin/grepField.perl CsBO.j 4 | cut -d\; -f1 | gzip > BOs
 # the blobs that came from somwhere else are:  
-cat /data/Bs | lsort 10G | join -v1 - <(zcat /data/BOs) | gzip > BNs
+cat Bs | lsort 10G | join -v1 - <(zcat BOs) | gzip > BNs
 ```
 Out of 5080658 blobs in hackathon repos only 2944578 have originated there: the rest (2136080) 
 were created somwhere else:
 ```
-zcat /data/BOs | wc -l
+zcat BOs | wc -l
 2944578
-zcat /data/BNs | wc -l
+zcat BNs | wc -l
 2136080
 ```
 
@@ -73,11 +74,51 @@ somwhere else (and after the hackathons)
 # find projects for all the commits for the blobs originated during hackathons 
 zcat c2BOta.s| cut -d\; -f1 | uniq | ~/lookup/getValues -f c2P | gzip > c2BOta2P.s
 # exclude hackathon projects
-zcat c2BOta2P.s | ~/bin/grepFieldv.perl Ps.gz 2 | gzip > c2BOta2Pnew.s
+zcat c2BOta2P.s | ~/lookup/grepFieldv.perl Ps.gz 2 | gzip > c2BOta2Pnew.s
 #finally commits, times, and projects that used blobs originated during hackathons
 zcat c2BOta.s | lsort 20G -t\; -k1 | join -t\; - <(zcat c2BOta2Pnew.s| lsort 10G -t\; -k1,2) | gzip > c2BOtaP.s
+# Count projects
+zcat c2BOtaP.s|cut -d\; -f4 | lsort 1G -u | wc -l
+374140
 ```
 
+Finally, identify projects and commits that provided the blobs used during hackathons:
+```
+# Get projects for each commit
+zcat c2BNta.s| cut -d\; -f1 | uniq | ~/lookup/getValues -f c2P | gzip > c2BNta2P.s
+# join to creat commit, blob, time, author, project
+zcat c2BNta.s | lsort 20G -t\; -k1 | join -t\; - <(zcat c2BNta2P.s| lsort 10G -t\; -k1,2) | gzip > c2BNtaP.s
+# Count projects
+zcat c2BNtaP.s|cut -d\; -f4 | lsort 1G -u | wc -l
+1619565
+
+# try get rid of the widely used blobs (probably
+# templates/licenses/trivial files) first
+# sort by blob
+zcat c2BNta.s | lsort 5G -t\; -k2 | gzip > c2BNta.sb
+
+# count blobs
+zcat c2BNta.sb | cut -d\; -f2 | uniq -c > c2BNta.sb.c
+# select blobs with under 100 commits (unusal ones)
+awk '{ if($1<100) print $2}' c2BNta.sb.c | gzip > unusualBlobs
+#filter to include only unusualBlobs
+zcat c2BNta.s | ~/lookup/grepField.perl unusualBlobs 2 | gzip > c2BNta.s1
+# join to creat commit, blob, time, author, project
+zcat c2BNta.s1 | lsort 20G -t\; -k1 | join -t\; - <(zcat c2BNta2P.s| lsort 10G -t\; -k1,2) | gzip > c2BNtaP.s1 
+# Count projects
+zcat c2BNtaP.s1|cut -d\; -f4 | lsort 1G -u | wc -l
+178308
+```
+If we exclude common blobs (probably templates/licenses/trivial
+files), the number of projects where hackathons sourced their code
+is 178308. If we include common blobs, it is even larger:
+
+For comparison, the number of projects using hackathon-originated
+files is 374140.
+
+In summary, hackathon repositories reuse files from existing
+repositories and the files created in the hackathon are also used
+later in other repositories. 
 
 ## Current status (reverse chronological):
 
